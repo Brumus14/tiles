@@ -19,7 +19,8 @@ bgfx_shader_handle_t util_renderer_load_shader(char *file_path) {
     return bgfx_create_shader(memory);
 }
 
-bgfx_texture_handle_t util_renderer_load_texture(char *file_path) {
+bgfx_texture_handle_t
+util_renderer_load_texture(char *file_path, bgfx_texture_info_t *texture_info) {
     FILE *file = fopen(file_path, "rb");
 
     fseek(file, 0, SEEK_END);
@@ -32,5 +33,5 @@ bgfx_texture_handle_t util_renderer_load_texture(char *file_path) {
 
     fclose(file);
 
-    return bgfx_create_texture(memory, BGFX_TEXTURE_NONE, true, NULL);
+    return bgfx_create_texture(memory, BGFX_TEXTURE_NONE, true, texture_info);
 }

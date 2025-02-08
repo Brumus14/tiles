@@ -7,15 +7,9 @@
 #include "bgfx/c99/bgfx.h"
 #include "cglm/cglm.h"
 #include "util/renderer.h"
-
-typedef struct vertex {
-    float x;
-    float y;
-    float z;
-    float uv_x;
-    float uv_y;
-    uint32_t abgr;
-} vertex;
+#include "vertex_layout.h"
+#include "tileset.h"
+#include "tilemap.h"
 
 int main() {
     GLFWwindow *window;
@@ -37,46 +31,23 @@ int main() {
 
     bgfx_init(&init);
     bgfx_reset(640, 480, BGFX_RESET_VSYNC, init.resolution.format);
+    // bgfx_set_debug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS);
 
     bgfx_set_view_clear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000ff, 1,
                         0);
 
-    bgfx_vertex_layout_t layout;
-    bgfx_vertex_layout_begin(&layout, BGFX_RENDERER_TYPE_OPENGL);
-    bgfx_vertex_layout_add(&layout, BGFX_ATTRIB_POSITION, 3,
-                           BGFX_ATTRIB_TYPE_FLOAT, false, false);
-    bgfx_vertex_layout_add(&layout, BGFX_ATTRIB_TEXCOORD0, 2,
-                           BGFX_ATTRIB_TYPE_FLOAT, false, false);
-    bgfx_vertex_layout_add(&layout, BGFX_ATTRIB_COLOR0, 4,
-                           BGFX_ATTRIB_TYPE_UINT8, true, false);
-    bgfx_vertex_layout_end(&layout);
-
-    vertex vertices[] = {
-        {0.0f, 1.0f, 0.0f, 0.0, 1.0, 0xff0000ff},
-        {1.0f, 1.0f, 0.0f, 1.0, 1.0, 0xff0000ff},
-        {1.0f, 0.0f, 0.0f, 1.0, 0.0, 0xff00ff00},
-        {0.0f, 0.0f, 0.0f, 0.0, 0.0, 0xff00ff00},
-    };
-
-    uint16_t indices[] = {0, 1, 2, 0, 2, 3};
-
-    bgfx_vertex_buffer_handle_t vertex_buffer = bgfx_create_vertex_buffer(
-        bgfx_make_ref(vertices, sizeof(vertices)), &layout, 0);
-
-    bgfx_index_buffer_handle_t index_buffer =
-        bgfx_create_index_buffer(bgfx_make_ref(indices, sizeof(indices)), 0);
-
-    bgfx_shader_handle_t vertex_shader =
-        util_renderer_load_shader("build/shaders/tilemap/vs.bin");
-    bgfx_shader_handle_t fragment_shader =
-        util_renderer_load_shader("build/shaders/tilemap/fs.bin");
-    bgfx_program_handle_t program =
-        bgfx_create_program(vertex_shader, fragment_shader, true);
+    vertex_layout_init();
 
     bgfx_texture_handle_t texture =
-        util_renderer_load_texture("build/textures/Grass.dds");
+        util_renderer_load_texture("build/textures/tilemap.dds", NULL);
     bgfx_uniform_handle_t texture_uniform =
         bgfx_create_uniform("s_texture", BGFX_UNIFORM_TYPE_SAMPLER, 0);
+
+    tileset tileset;
+    tileset_init(&tileset, 16, 16, "build/textures/tilemap.dds");
+
+    tilemap tilemap;
+    tilemap_init(&tilemap, tileset, 25, 15);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -85,8 +56,6 @@ int main() {
         int height;
 
         glfwGetWindowSize(window, &width, &height);
-
-        printf("%d, %d\n", width, height);
 
         bgfx_reset(width, height, BGFX_RESET_VSYNC, init.resolution.format);
         bgfx_set_view_rect(0, 0, 0, width, height);
@@ -120,9 +89,6 @@ int main() {
 
         bgfx_touch(0);
 
-        bgfx_set_vertex_buffer(0, vertex_buffer, 0, 4);
-        bgfx_set_index_buffer(index_buffer, 0, 6);
-
         bgfx_set_texture(0, texture_uniform, texture, BGFX_SAMPLER_POINT);
 
         bgfx_set_state(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
@@ -130,7 +96,8 @@ int main() {
                            BGFX_STATE_CULL_CW,
                        0);
 
-        bgfx_submit(0, program, 0, 0);
+        tilemap_draw(&tilemap);
+
         bgfx_frame(false);
     }
 
